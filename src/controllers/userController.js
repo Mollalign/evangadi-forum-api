@@ -38,37 +38,42 @@ async function register(req, res) {
 
 
 async function login(req, res) {
-  const {email, password} = req.body;
-  if (!email || !password) {
-    return res.status(400).json({ msg: "please enter all required fields" });
-  }
-  
-  try {
-    const [user] = await dbConnection.query("SELECT username,userid,password FROM users WHERE email = ? ", [email]);
-    if (user.length == 0) {
-      return res.status(400).json({ msg: "invalid credential" });
-    } 
-    // compare password
-    const isMatch = await bcrypt.compare(password, user[0].password);
+  const { email, password } = req.body;
 
-    if (!isMatch) {
-      return res.status(400).json({ msg: "invalid credential" });
+  if (!email || !password) {
+    return res.status(400).json({ msg: "Please enter all required fields" });
+  }
+
+  try {
+    const [rows] = await dbConnection.query(
+      "SELECT username, userid, password FROM users WHERE email = ?",
+      [email]
+    );
+
+    if (rows.length === 0) {
+      return res.status(400).json({ msg: "Invalid credentials" });
     }
 
-    const username = user[0].username;
-    const userid = user[0].userid;
+    const isMatch = await bcrypt.compare(password, rows[0].password);
 
-    const token = jwt.sign({username, userid}, process.env.JWT_SECRET, {
+    if (!isMatch) {
+      return res.status(400).json({ msg: "Invalid credentials" });
+    }
+
+    const username = rows[0].username;
+    const userid = rows[0].userid;
+
+    const token = jwt.sign({ username, userid }, process.env.JWT_SECRET, {
       expiresIn: "1d"
     });
 
-    return res.status(200).json({msg: "user login successful", token, username})
-
+    return res.status(200).json({ msg: "User login successful", token, username });
   } catch (error) {
     console.log(error.message);
-    return res.status(500).json({msg: "Something went wrong, try again later!"});
+    return res.status(500).json({ msg: "Something went wrong, try again later!" });
   }
 }
+
 
 async function checkUser(req, res) {
   const {username, userid} = req.user;
